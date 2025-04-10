@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>PDF to Markdown Converter</title>
+    <!-- Bootstrap CSS and Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3f37c9;
+            --accent-color: #4895ef;
+            --background-color: #f8f9fd;
+            --text-color: #2b2d42;
+            --light-text: #6c757d;
+        }
+
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+
+        .navbar {
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+        }
+
+        .navbar-brand {
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        .main-container {
+            max-width: 900px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .app-title {
+            text-align: center;
+            margin-bottom: 2rem;
+            color: var(--primary-color);
+        }
+
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            margin-bottom: 2rem;
+            background: white;
+        }
+
+        .upload-zone {
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #ffffff;
+        }
+
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: var(--primary-color);
+            background: #f8f9ff;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+
+        .selected-files {
+            margin-top: 1rem;
+            padding: 0.5rem;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 0.5rem;
+            background: white;
+            border-radius: 6px;
+            margin-bottom: 0.5rem;
+        }
+
+        .file-icon {
+            color: var(--primary-color);
+            margin-right: 0.5rem;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+            padding: 0.6rem 1.5rem;
+            font-weight: 500;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--secondary-color);
+            border-color: var(--secondary-color);
+            transform: translateY(-1px);
+        }
+
+        #results-list {
+            margin: 0;
+            padding: 0;
+        }
+
+        #results-list li {
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+        }
+
+        #results-list li a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        #results-list li a:hover {
+            text-decoration: underline;
+        }
+
+        .alert {
+            border-radius: 8px;
+            border: none;
+        }
+
+        .processing-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .main-container {
+                margin: 1rem auto;
+            }
+            
+            .upload-zone {
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-file-alt me-2"></i>
+                PDF to Markdown
+            </a>
+        </div>
+    </nav>
+
+    <div class="main-container">
+        <h1 class="app-title">Convert PDF to Markdown</h1>
+        
+        <div class="card">
+            <div class="card-body">
+                <form id="upload-form" enctype="multipart/form-data">
+                    <div class="upload-zone" id="drop-zone">
+                        <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                        <h3 class="mb-3">Drop your PDF files here</h3>
+                        <p class="text-muted mb-3">or</p>
+                        <input type="file" class="d-none" id="pdf-upload" name="files[]" accept=".pdf" multiple required>
+                        <button type="button" class="btn btn-primary" onclick="document.getElementById('pdf-upload').click()">
+                            <i class="fas fa-folder-open me-2"></i>Browse Files
+                        </button>
+                        <div id="selected-files" class="selected-files" style="display: none;">
+                            <h6 class="mb-3">Selected Files:</h6>
+                            <div id="file-list"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mt-4">
+                        <button type="submit" id="convert-button" class="btn btn-primary btn-lg">
+                            <i class="fas fa-cog me-2"></i>Convert Files
+                        </button>
+                    </div>
+                    
+                    <div id="status-message" class="mt-4" role="status"></div>
+                </form>
+            </div>
+        </div>
+
+        <div id="results-card" class="card" style="display: none;">
+            <div class="card-body">
+                <h2 class="card-title">
+                    <i class="fas fa-check-circle text-success me-2"></i>
+                    Converted Files
+                </h2>
+                <ul id="results-list" class="list-unstyled mt-4">
+                    <!-- Results will be populated here -->
+                </ul>
+                <p class="text-muted small mt-3">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <em>Image links (e.g., {{ image_base_url }}/static/images/...) require this server to be running and accessible.</em>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        const form = document.getElementById('upload-form');
+        const convertButton = document.getElementById('convert-button');
+        const statusMessage = document.getElementById('status-message');
+        const resultsCard = document.getElementById('results-card');
+        const resultsList = document.getElementById('results-list');
+        const fileInput = document.getElementById('pdf-upload');
+        const dropZone = document.getElementById('drop-zone');
+        const selectedFiles = document.getElementById('selected-files');
+        const fileList = document.getElementById('file-list');
+
+        // Drag and drop functionality
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight(e) {
+            dropZone.classList.add('dragover');
+        }
+
+        function unhighlight(e) {
+            dropZone.classList.remove('dragover');
+        }
+
+        dropZone.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            fileInput.files = files;
+            updateFileList();
+        }
+
+        fileInput.addEventListener('change', updateFileList);
+
+        function updateFileList() {
+            if (fileInput.files.length > 0) {
+                selectedFiles.style.display = 'block';
+                fileList.innerHTML = '';
+                Array.from(fileInput.files).forEach(file => {
+                    const fileItem = document.createElement('div');
+                    fileItem.className = 'file-item';
+                    fileItem.innerHTML = `
+                        <i class="fas fa-file-pdf file-icon"></i>
+                        <span>${file.name}</span>
+                    `;
+                    fileList.appendChild(fileItem);
+                });
+            } else {
+                selectedFiles.style.display = 'none';
+            }
+        }
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            if (fileInput.files.length === 0) {
+                showStatus('Please select at least one PDF file.', 'alert-warning');
+                return;
+            }
+
+            convertButton.disabled = true;
+            convertButton.innerHTML = `
+                <span class="processing-indicator">
+                    <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                    Processing...
+                </span>
+            `;
+            statusMessage.innerHTML = '';
+            resultsCard.style.display = 'none';
+            resultsList.innerHTML = '';
+
+            const formData = new FormData(form);
+
+            try {
+                const response = await fetch('/convert', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    showStatus('Conversion successful!', 'alert-success');
+                    displayResults(data.files);
+                    form.reset();
+                    selectedFiles.style.display = 'none';
+                } else {
+                    showStatus(`Error: ${data.message || 'Conversion failed.'}`, 'alert-danger');
+                }
+
+            } catch (error) {
+                console.error('Fetch Error:', error);
+                showStatus(`Network error or server unavailable: ${error.message}`, 'alert-danger');
+            } finally {
+                convertButton.disabled = false;
+                convertButton.innerHTML = '<i class="fas fa-cog me-2"></i>Convert Files';
+            }
+        });
+
+        function showStatus(message, alertType) {
+            statusMessage.innerHTML = `
+                <div class="alert ${alertType}" role="alert">
+                    <i class="fas ${alertType.includes('success') ? 'fa-check-circle' : 'fa-exclamation-circle'} me-2"></i>
+                    ${message}
+                </div>
+            `;
+        }
+
+        function displayResults(files) {
+            if (files && files.length > 0) {
+                files.forEach(file => {
+                    const listItem = document.createElement('li');
+                    listItem.innerHTML = `
+                        <i class="fas fa-file-alt me-3"></i>
+                        <a href="${file.url}" target="_blank">${file.name}</a>
+                    `;
+                    resultsList.appendChild(listItem);
+                });
+                resultsCard.style.display = 'block';
+            } else {
+                resultsCard.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
